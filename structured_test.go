@@ -12,32 +12,7 @@ import (
 )
 
 func TestStructuredLog(t *testing.T) {
-	cases := []struct {
-		Level     Level
-		Structure Structure
-		Message   string
-	}{
-		{Level: DEBUG, Message: "Message", Structure: Structure{}},
-		{Level: INFO, Message: "Message", Structure: Structure{}},
-		{Level: DEBUG, Message: "Message", Structure: Structure{
-			"String": "test",
-			"bool":   true,
-			"int":    2,
-			"struct": struct {
-				string
-			}{"Test"},
-		}},
-		{Level: INFO, Message: "Message", Structure: Structure{
-			"String": "test",
-			"bool":   true,
-			"int":    2,
-			"struct": struct {
-				string
-			}{"Test"},
-		}},
-	}
-
-	for _, test := range cases {
+	for _, test := range getBaseLogMessages() {
 		logger := logrus.New()
 		buffer := &bytes.Buffer{}
 		logger.Out = buffer
@@ -87,7 +62,11 @@ func TestStructuredLog_Panic(t *testing.T) {
 
 		func() {
 			defer func() {
-				recover()
+				if err := recover(); nil != err {
+					fmt.Printf("Error recovered [%+v]\n", err)
+				}
+			}()
+			defer func() {
 				checkLogOutput(t, test.Level, test.Message, test.Structure, buffer.String())
 			}()
 			structured.Log(test.Level, test.Structure, test.Message)
@@ -110,7 +89,7 @@ func TestStructuredLog_NoLogger(t *testing.T) {
 }
 
 func checkLogOutput(t *testing.T, lvl Level, msg string, str Structure, output string) {
-	expect := "level=" + strings.ToLower(string(lvl))
+	expect := "level=" + strings.ToLower(lvl.String())
 	if !strings.Contains(output, expect) {
 		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
 	}

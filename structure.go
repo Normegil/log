@@ -1,12 +1,14 @@
 package log
 
 import (
-	"bytes"
 	"fmt"
+	"strings"
 )
 
+// Structure define a map of "key:value" to log
 type Structure map[string]interface{}
 
+// With merge the given Structure with the current Structure and send back the result.
 func (s Structure) With(str Structure) Structure {
 	if nil == s {
 		s = make(map[string]interface{})
@@ -19,21 +21,22 @@ func (s Structure) With(str Structure) Structure {
 	return toReturn
 }
 
+// String representation of a Structure
 func (s Structure) String() string {
-	buffer := &bytes.Buffer{}
+	var toJoin []string
 	if len(s) != 0 {
 		first := true
-		buffer.WriteString("[")
+		toJoin = append(toJoin, "[")
 		for key, value := range s {
 			if !first {
-				buffer.WriteString(";")
+				toJoin = append(toJoin, ";")
 			}
-			buffer.WriteString(key)
-			buffer.WriteString(":")
-			fmt.Fprint(buffer, value)
+			toJoin = append(toJoin, key)
+			toJoin = append(toJoin, ":")
+			toJoin = append(toJoin, fmt.Sprint(value))
 			first = false
 		}
-		buffer.WriteString("]")
+		toJoin = append(toJoin, "]")
 	}
-	return buffer.String()
+	return strings.Join(toJoin, "")
 }
