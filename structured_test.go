@@ -6,141 +6,114 @@ import (
 
 	"strings"
 
+	"fmt"
+
 	"github.com/Sirupsen/logrus"
 )
 
-func TestStructuredLog_NoStructure_Debug(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Level = logrus.DebugLevel
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
+func TestStructuredLog(t *testing.T) {
+	cases := []struct {
+		Level     Level
+		Structure Structure
+		Message   string
+	}{
+		{Level: DEBUG, Message: "Message", Structure: Structure{}},
+		{Level: INFO, Message: "Message", Structure: Structure{}},
+		{Level: DEBUG, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+		{Level: INFO, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+	}
 
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
-	structured.Debug(Structure{}, msg)
+	for _, test := range cases {
+		logger := logrus.New()
+		buffer := &bytes.Buffer{}
+		logger.Out = buffer
+		logger.Level = logrus.DebugLevel
+		logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
 
-	logMsg := buffer.String()
-	expect := "level=debug msg=" + msg + " \n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+		structured := StructuredLog{Logger: logger}
+
+		structured.Log(test.Level, test.Structure, test.Message)
+		checkLogOutput(t, test.Level, test.Message, test.Structure, buffer.String())
 	}
 }
 
-func TestStructuredLog_NoStructure_Info(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
+func TestStructuredLog_Panic(t *testing.T) {
+	cases := []struct {
+		Level     Level
+		Structure Structure
+		Message   string
+	}{
+		{Level: PANIC, Message: "Message", Structure: Structure{}},
+		{Level: PANIC, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+		{Level: INFO, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+	}
 
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
-	structured.Info(Structure{}, msg)
+	for _, test := range cases {
+		logger := logrus.New()
+		buffer := &bytes.Buffer{}
+		logger.Out = buffer
+		logger.Level = logrus.DebugLevel
+		logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
 
-	logMsg := buffer.String()
-	expect := "level=info msg=" + msg + " \n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+		structured := StructuredLog{Logger: logger}
+
+		func() {
+			defer func() {
+				recover()
+				checkLogOutput(t, test.Level, test.Message, test.Structure, buffer.String())
+			}()
+			structured.Log(test.Level, test.Structure, test.Message)
+		}()
 	}
 }
 
-func TestStructuredLog_NoStructure_Panic(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
+func checkLogOutput(t *testing.T, lvl Level, msg string, str Structure, output string) {
+	expect := "level=" + string(lvl)
+	if strings.Contains(output, expect) {
+		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
+	}
 
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
+	expect = "msg=" + msg + "\n"
+	if strings.Contains(output, expect) {
+		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
+	}
 
-	defer func() {
-		recover()
-		logMsg := buffer.String()
-		expect := "level=panic msg=" + msg + " \n"
-		if expect != logMsg {
-			t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+	if 0 == len(str) {
+		for key, value := range str {
+			expect = key + "=" + fmt.Sprint(value)
+			if strings.Contains(output, expect) {
+				t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
+			}
 		}
-	}()
-	structured.Panic(Structure{}, msg)
-}
-
-func TestStructuredLog_Structure_Debug(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Level = logrus.DebugLevel
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
-
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
-	structure := Structure{
-		"String": "test",
-		"bool":   true,
-		"int":    2,
-		"struct": struct {
-			string
-		}{"Test"},
 	}
-	structured.Debug(structure, msg)
-
-	logMsg := buffer.String()
-	expect := "level=debug msg=" + msg + " String=test bool=true int=2 struct={Test} \n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
-	}
-}
-
-func TestStructuredLog_Structure_Info(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
-
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
-	structure := Structure{
-		"String": "test",
-		"bool":   true,
-		"int":    2,
-		"struct": struct {
-			string
-		}{"Test"},
-	}
-	structured.Info(structure, msg)
-
-	logMsg := buffer.String()
-	expect := "level=info msg=" + msg + " String=test bool=true int=2 struct={Test} \n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
-	}
-}
-
-func TestStructuredLog_Structure_Panic(t *testing.T) {
-	logger := logrus.New()
-	buffer := &bytes.Buffer{}
-	logger.Out = buffer
-	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
-
-	structured := StructuredLog{Logger: logger}
-	msg := "Message"
-	structure := Structure{
-		"String": "test",
-		"bool":   true,
-		"int":    2,
-		"struct": struct {
-			string
-		}{"Test"},
-	}
-
-	defer func() {
-		recover()
-		logMsg := buffer.String()
-		expect := "level=panic msg=" + msg + " String=test bool=true int=2 struct={Test} \n"
-		if expect != logMsg {
-			t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
-		}
-	}()
-	structured.Panic(structure, msg)
 }
 
 func TestStructuredLog_StructureKept(t *testing.T) {
@@ -153,7 +126,7 @@ func TestStructuredLog_StructureKept(t *testing.T) {
 	msg := "Message"
 	structure := Structure{}
 
-	structured.Info(structure, msg)
+	structured.Log(INFO, structure, msg)
 	logMsg := buffer.String()
 
 	if !strings.Contains(logMsg, "Lib=logrus") {

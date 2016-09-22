@@ -16,7 +16,8 @@ func TestBasicLog_NoStructure_DebugDisabled(t *testing.T) {
 
 	basic := BasicLog{Logger: &logger}
 	msg := "Message"
-	basic.Debug(Structure{}, msg)
+	lvl := DEBUG
+	basic.Log(lvl, Structure{}, msg)
 
 	logMsg := buffer.String()
 	if "" != logMsg {
@@ -24,113 +25,88 @@ func TestBasicLog_NoStructure_DebugDisabled(t *testing.T) {
 	}
 }
 
-func TestBasicLog_NoStructure_DebugEnabled(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
-
-	basic := BasicLog{Logger: &logger, PrintDebug: true}
-	msg := "Message"
-	basic.Debug(Structure{}, msg)
-
-	logMsg := buffer.String()
-	expect := "[DEBUG]Message\n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+func TestBasicLog(t *testing.T) {
+	cases := []struct {
+		Level     Level
+		Structure Structure
+		Message   string
+	}{
+		{Level: DEBUG, Message: "Message", Structure: Structure{}},
+		{Level: INFO, Message: "Message", Structure: Structure{}},
+		{Level: DEBUG, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+		{Level: INFO, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
 	}
-}
 
-func TestBasicLog_NoStructure_Info(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
+	for _, test := range cases {
+		logger := log.Logger{}
+		buffer := &bytes.Buffer{}
+		logger.SetOutput(buffer)
 
-	basic := BasicLog{Logger: &logger}
-	msg := "Message"
-	basic.Info(Structure{}, msg)
+		basic := BasicLog{Logger: &logger, PrintDebug: true}
+		regex := loadRegex(test.Level, test.Message, test.Structure)
 
-	logMsg := buffer.String()
-	expect := "[INFO]Message\n"
-	if expect != logMsg {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
-	}
-}
-
-func TestBasicLog_NoStructure_Panic(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
-
-	basic := BasicLog{Logger: &logger}
-	msg := "Message"
-	defer func() {
-		recover()
+		basic.Log(test.Level, test.Structure, test.Message)
 		logMsg := buffer.String()
-		expect := "[PANIC]Message\n"
-		if expect != logMsg {
-			t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+		if !regex.MatchString(logMsg) {
+			t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", regex, logMsg)
 		}
-	}()
-
-	basic.Panic(Structure{}, msg)
-}
-
-func TestBasicLog_Structure_Debug(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
-
-	basic := BasicLog{Logger: &logger, PrintDebug: true}
-	msg := "Message"
-	structure := Structure{"Test": "test", "Test1": 1, "Test2": struct{ test int }{2}}
-	basic.Debug(structure, msg)
-
-	expect := loadRegex("Debug", msg, structure)
-	logMsg := buffer.String()
-	if !expect.MatchString(logMsg) {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
 	}
 }
 
-func TestBasicLog_Structure_Info(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
+func TestBasicLog_Panic(t *testing.T) {
+	cases := []struct {
+		Level     Level
+		Structure Structure
+		Message   string
+	}{
+		{Level: PANIC, Message: "Message", Structure: Structure{}},
+		{Level: PANIC, Message: "Message", Structure: Structure{
+			"String": "test",
+			"bool":   true,
+			"int":    2,
+			"struct": struct {
+				string
+			}{"Test"},
+		}},
+	}
 
-	basic := BasicLog{Logger: &logger, PrintDebug: true}
-	msg := "Message"
-	structure := Structure{"Test": "test", "Test1": 1, "Test2": struct{ test int }{2}}
-	basic.Info(structure, msg)
+	for _, test := range cases {
+		logger := log.Logger{}
+		buffer := &bytes.Buffer{}
+		logger.SetOutput(buffer)
 
-	expect := loadRegex("Info", msg, structure)
-	logMsg := buffer.String()
-	if !expect.MatchString(logMsg) {
-		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
+		basic := BasicLog{Logger: &logger, PrintDebug: true}
+		regex := loadRegex(test.Level, test.Message, test.Structure)
+
+		func() {
+			defer func() {
+				recover()
+				logMsg := buffer.String()
+				if !regex.MatchString(logMsg) {
+					t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", regex, logMsg)
+				}
+			}()
+			basic.Log(test.Level, test.Structure, test.Message)
+		}()
 	}
 }
 
-func TestBasicLog_Structure_Panic(t *testing.T) {
-	logger := log.Logger{}
-	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
-
-	basic := BasicLog{Logger: &logger, PrintDebug: true}
-
-	msg := "Message"
-	structure := Structure{"Test": "test", "Test1": 1, "Test2": struct{ test int }{2}}
-	defer func() {
-		recover()
-		logMsg := buffer.String()
-		expect := loadRegex("Panic", msg, structure)
-		if !expect.MatchString(logMsg) {
-			t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", expect, logMsg)
-		}
-	}()
-	basic.Panic(structure, msg)
-}
-
-func loadRegex(lvl string, msg string, str Structure) *regexp.Regexp {
-	regex := `^\[` + strings.ToUpper(lvl) + `\]` + msg
+func loadRegex(lvl Level, msg string, str Structure) *regexp.Regexp {
+	regex := `^\[` + strings.ToUpper(string(lvl)) + `\]` + msg
 	size := len(str)
 	if 0 != size {
 		key := `[a-zA-Z0-9]*`

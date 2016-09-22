@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"log"
 )
 
@@ -9,28 +10,27 @@ type BasicLog struct {
 	PrintDebug bool
 }
 
-func (l BasicLog) Panic(str Structure, v ...interface{}) {
+func (l BasicLog) Log(lvl Level, str Structure, v ...interface{}) {
 	if nil != l.Logger {
-		l.Logger.Panic(l.toString(str, "[PANIC]", v...)...)
+		switch lvl {
+		case PANIC:
+			l.Logger.Panic(l.toString(str, lvl, v...)...)
+		case INFO:
+			l.Logger.Print(l.toString(str, lvl, v...)...)
+		case DEBUG:
+			if l.PrintDebug {
+				l.Logger.Print(l.toString(str, lvl, v...)...)
+			}
+		}
 	}
 }
 
-func (l BasicLog) Info(str Structure, v ...interface{}) {
-	if nil != l.Logger {
-		l.Logger.Print(l.toString(str, "[INFO]", v...)...)
-	}
-}
-
-func (l BasicLog) Debug(str Structure, v ...interface{}) {
-	if nil != l.Logger && l.PrintDebug {
-		l.Logger.Print(l.toString(str, "[DEBUG]", v...)...)
-	}
-}
-
-func (l BasicLog) toString(str Structure, prefix string, v ...interface{}) []interface{} {
-	toLog := []interface{}{
-		prefix,
-	}
+func (l BasicLog) toString(str Structure, lvl Level, v ...interface{}) []interface{} {
+	lvlToLog := bytes.Buffer{}
+	lvlToLog.WriteString("[")
+	lvlToLog.WriteString(string(lvl))
+	lvlToLog.WriteString("]")
+	toLog := []interface{}{lvlToLog.String()}
 	toLog = append(toLog, v...)
 	if 0 != len(str) {
 		toLog = append(toLog, " "+str.String())

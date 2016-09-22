@@ -6,21 +6,17 @@ type StructuredLog struct {
 	Logger logrus.FieldLogger
 }
 
-func (l StructuredLog) Panic(str Structure, v ...interface{}) {
+func (l StructuredLog) Log(lvl Level, str Structure, v ...interface{}) {
 	if nil != l.Logger {
-		l.StructureMessage(str).Panic(v...)
-	}
-}
-
-func (l StructuredLog) Info(str Structure, v ...interface{}) {
-	if nil != l.Logger {
-		l.StructureMessage(str).Info(v...)
-	}
-}
-
-func (l StructuredLog) Debug(str Structure, v ...interface{}) {
-	if nil != l.Logger {
-		l.StructureMessage(str).Debug(v...)
+		logger := l.StructureMessage(str)
+		switch lvl {
+		case PANIC:
+			logger.Panic(v...)
+		case INFO:
+			logger.Info(v...)
+		case DEBUG:
+			logger.Debug(v...)
+		}
 	}
 }
 
