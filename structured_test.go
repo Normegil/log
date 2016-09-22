@@ -95,6 +95,20 @@ func TestStructuredLog_Panic(t *testing.T) {
 	}
 }
 
+func TestStructuredLog_NoLogger(t *testing.T) {
+	logger := logrus.New()
+	buffer := &bytes.Buffer{}
+	logger.Out = buffer
+
+	basic := StructuredLog{}
+
+	basic.Log(PANIC, Structure{}, "Message")
+	logMsg := buffer.String()
+	if 0 != len(logMsg) {
+		t.Errorf("Error (String not empty) [Received: '%s']", logMsg)
+	}
+}
+
 func checkLogOutput(t *testing.T, lvl Level, msg string, str Structure, output string) {
 	expect := "level=" + string(lvl)
 	if strings.Contains(output, expect) {

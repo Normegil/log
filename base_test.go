@@ -105,6 +105,20 @@ func TestBasicLog_Panic(t *testing.T) {
 	}
 }
 
+func TestBasicLog_NoLogger(t *testing.T) {
+	logger := log.Logger{}
+	buffer := &bytes.Buffer{}
+	logger.SetOutput(buffer)
+
+	basic := BasicLog{}
+
+	basic.Log(PANIC, Structure{}, "Message")
+	logMsg := buffer.String()
+	if 0 != len(logMsg) {
+		t.Errorf("Error (String not empty) [Received: '%s']", logMsg)
+	}
+}
+
 func loadRegex(lvl Level, msg string, str Structure) *regexp.Regexp {
 	regex := `^\[` + strings.ToUpper(string(lvl)) + `\]` + msg
 	size := len(str)
