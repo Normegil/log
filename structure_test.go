@@ -15,6 +15,17 @@ func TestStructureToString_Empty(t *testing.T) {
 	}
 }
 
+func TestStructure_With(t *testing.T) {
+	structure := Structure{}
+
+	key := "Test"
+	value := "test"
+	structure = structure.With(Structure{key: value})
+	if value != structure[key] {
+		t.Errorf("Error (Mismatched strings) [Expected: '%s'; Received: '%s']", value, structure[key])
+	}
+}
+
 func TestStructureToString(t *testing.T) {
 	structure := Structure{
 		"String": "test",

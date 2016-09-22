@@ -110,20 +110,20 @@ func TestStructuredLog_NoLogger(t *testing.T) {
 }
 
 func checkLogOutput(t *testing.T, lvl Level, msg string, str Structure, output string) {
-	expect := "level=" + string(lvl)
-	if strings.Contains(output, expect) {
+	expect := "level=" + strings.ToLower(string(lvl))
+	if !strings.Contains(output, expect) {
 		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
 	}
 
-	expect = "msg=" + msg + "\n"
-	if strings.Contains(output, expect) {
+	expect = "msg=" + msg
+	if !strings.Contains(output, expect) {
 		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
 	}
 
 	if 0 == len(str) {
 		for key, value := range str {
 			expect = key + "=" + fmt.Sprint(value)
-			if strings.Contains(output, expect) {
+			if !strings.Contains(output, expect) {
 				t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, output)
 			}
 		}
@@ -145,5 +145,43 @@ func TestStructuredLog_StructureKept(t *testing.T) {
 
 	if !strings.Contains(logMsg, "Lib=logrus") {
 		t.Errorf("Error (substring not found) [Expected: '%s'; Received: '%s']", "Lib=logrus", logMsg)
+	}
+}
+
+func TestStructuredLog_With(t *testing.T) {
+	logger := logrus.New()
+	buffer := &bytes.Buffer{}
+	logger.Out = buffer
+	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
+
+	structured := StructuredLog{Logger: logger}
+	value := "test"
+	key := "Test"
+	structured.With(Structure{key: value}).Log(INFO, Structure{}, "Message")
+	logMsg := buffer.String()
+
+	expect := key + "=" + value
+	if !strings.Contains(logMsg, expect) {
+		t.Errorf("Error (substring not found) [Expected: '%s'; Received: '%s']", expect, logMsg)
+	}
+}
+
+func TestStructuredLog_With_Overwrite(t *testing.T) {
+	logger := logrus.New()
+	buffer := &bytes.Buffer{}
+	logger.Out = buffer
+	logger.Formatter = &logrus.TextFormatter{DisableColors: true, DisableTimestamp: true}
+
+	var structured AgnosticLogger
+	structured = StructuredLog{Logger: logger}
+	value := "test"
+	key := "Test"
+	structured = structured.With(Structure{key: value})
+	structured.With(Structure{key: "other" + value}).Log(INFO, Structure{}, "Message")
+	logMsg := buffer.String()
+
+	expect := key + "=" + "other" + value
+	if !strings.Contains(logMsg, expect) {
+		t.Errorf("Error (substring not found) [Expected: '%s'; Received: '%s']", expect, logMsg)
 	}
 }

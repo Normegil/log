@@ -8,7 +8,12 @@ type StructuredLog struct {
 
 func (l StructuredLog) Log(lvl Level, str Structure, v ...interface{}) {
 	if nil != l.Logger {
-		logger := l.StructureMessage(str)
+		fields := logrus.Fields{}
+		for key, value := range str {
+			fields[key] = value
+		}
+
+		logger := l.Logger.WithFields(fields)
 		switch lvl {
 		case PANIC:
 			logger.Panic(v...)
@@ -20,10 +25,12 @@ func (l StructuredLog) Log(lvl Level, str Structure, v ...interface{}) {
 	}
 }
 
-func (l StructuredLog) StructureMessage(str Structure) logrus.FieldLogger {
-	logger := l.Logger
+func (l StructuredLog) With(str Structure) AgnosticLogger {
+	fields := logrus.Fields{}
 	for key, value := range str {
-		logger = logger.WithField(key, value)
+		fields[key] = value
 	}
-	return logger
+
+	l.Logger = l.Logger.WithFields(fields)
+	return l
 }

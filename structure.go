@@ -7,6 +7,18 @@ import (
 
 type Structure map[string]interface{}
 
+func (s Structure) With(str Structure) Structure {
+	if nil == s {
+		s = make(map[string]interface{})
+	}
+
+	toReturn := s
+	for key, value := range str {
+		toReturn[key] = value
+	}
+	return toReturn
+}
+
 func (s Structure) String() string {
 	buffer := &bytes.Buffer{}
 	if len(s) != 0 {

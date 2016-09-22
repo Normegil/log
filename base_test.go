@@ -119,6 +119,39 @@ func TestBasicLog_NoLogger(t *testing.T) {
 	}
 }
 
+func TestBasicLog_With(t *testing.T) {
+	logger := log.Logger{}
+	buffer := &bytes.Buffer{}
+	logger.SetOutput(buffer)
+
+	basic := BasicLog{Logger: &logger, PrintDebug: true}
+
+	basic.With(Structure{"Test": "test"}).Log(INFO, Structure{}, "Message")
+	logMsg := buffer.String()
+	expect := "Test:test"
+	if !strings.Contains(logMsg, expect) {
+		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, logMsg)
+	}
+}
+
+func TestBasicLog_With_Overwrite(t *testing.T) {
+	logger := log.Logger{}
+	buffer := &bytes.Buffer{}
+	logger.SetOutput(buffer)
+
+	var basic AgnosticLogger
+	basic = BasicLog{Logger: &logger, PrintDebug: true}
+
+	key := "Test"
+	basic = basic.With(Structure{key: "test"})
+	basic.With(Structure{key: "otherTest"}).Log(INFO, Structure{}, "Message")
+	logMsg := buffer.String()
+	expect := key + ":otherTest"
+	if !strings.Contains(logMsg, expect) {
+		t.Errorf("Error (Doesn't contains substring) [Expected: '%s'; Received: '%s']", expect, logMsg)
+	}
+}
+
 func loadRegex(lvl Level, msg string, str Structure) *regexp.Regexp {
 	regex := `^\[` + strings.ToUpper(string(lvl)) + `\]` + msg
 	size := len(str)
